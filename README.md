@@ -114,3 +114,7 @@ llama_print_timings:       total time = 10251.37 ms
 ```
 
 But doesn't output correctly?
+
+# ChatGPT save us
+OK it's getting late, I give up, lets see if ChatGPT4-CI can do better...
+* [https://chat.openai.com/share/773738dd-114a-4334-ad42-8ead2bb06976](https://chat.openai.com/share/773738dd-114a-4334-ad42-8ead2bb06976)
