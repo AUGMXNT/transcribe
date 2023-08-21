@@ -119,4 +119,11 @@ But doesn't output correctly?
 OK it's getting late, I give up, lets see if ChatGPT4-CI can do better...
 * [https://chat.openai.com/share/41f01738-637a-465c-a874-3c60e17fa2d1](https://chat.openai.com/share/41f01738-637a-465c-a874-3c60e17fa2d1)
 
+it generated some not quite correct output - I asked it to make some corrections but it went down a path or writing worse and worse regexes.
+
+Instead, I took that output and sent it to a new CI w/ a fresh context that could remember it was an LLM...
+* [https://chat.openai.com/share/d8306fbc-9034-4050-b028-e037e5f76b25](https://chat.openai.com/share/d8306fbc-9034-4050-b028-e037e5f76b25)
+
+
+
 If we wanted to use a local model to do cleanup we would have to write our own code like w/ the CI to split lines, then pass into the local LLM to fix. If we used a llama2-70b it would be smart enough; we should try to figure out what's the smallest model that could help us...
