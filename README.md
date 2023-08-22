@@ -1,7 +1,13 @@
 # transcribe
-Simple transcription and cleanup using local libraries
+
+This is a simple transcription project done in 2023-08 intended to see what's possible with local AI tools.
 
 # Setup
+
+The assumption is that you are familiar w/ ML (UNIX/Python/Conda/Mamba), here are the required packages.
+
+You will need CUDA.
+
 ```
 # Basic environment
 conda create -n transcribe
@@ -29,8 +35,12 @@ pip install bitsandbytes
 # OpenAI
 pip install openai
 ```
-# Transcribe
-WhisperX transcription of 33m file took 1m15s of wall time on a 3090 w/ large-v2 model
+
+# Transcription
+
+[WhisperX](https://github.com/m-bain/whisperX) transcription of 33m file took 1m15s of wall time on a 3090 w/ large-v2 model.
+
+WhisperX is great - super fast, and with the additional HF-gated models, you can do diarization effectively.
 
 ```
 # get file
@@ -43,28 +53,40 @@ WhisperX transcription of 33m file took 1m15s of wall time on a 3090 w/ large-v2
 ./03-premunge.sh
 ```
 
-# Cleanup
-Let's see if we can do any cleanup. Let's give a fancy new "big" context model a try:
-* https://huggingface.co/togethercomputer/LLaMA-2-7B-32K
+I wrote a simple script [03-premunge.sh](03-premunge.sh) to assign the speaker names manually. I used the VTT (although the SRT would be almost the same) - the TXT output does not include the speakers.
 
-Issues:
-```
-# libtiff.so.5 complaints?
-cd /usr/lib
-ln -s libtiff.so.6 libtiff.so.5
+# Additional Cleanup
 
-# FlashAttention2 being a baby (dll-hell)
-# UGH, if we skip it we run out of memory on a 24GB GPU. boourns
-```
+## Initial Try
 
-Let's not rathole...
+The end result is about 10K tokens. For cleanup, my original intention was to use on of the new "long" context (16K, 32K) windows a try. I started with the ([recently released](https://together.ai/blog/llama-2-7b-32k)) [togethercomputer/Llama-2-7B-32K-Instruct](https://huggingface.co/togethercomputer/Llama-2-7B-32K-Instruct) model.
 
-Next: https://huggingface.co/syzymon/long_llama_3b_instruct
-* Problems
 
-Next: https://huggingface.co/TheBloke/LlongOrca-7B-16K-GGML
 
-So, this ... runs:
+The problems I ran into:
+
+* libtiff.so.5 complaints
+  ```cd /usr/lib
+  ln -s libtiff.so.6 libtiff.so.5```
+
+* FlashAttention 2 having lib complaints - couldn't fix so just skipped it
+
+* Could not run on 24GB GPU? (maybe if we had FlashAttention 2)
+
+
+
+I spent a fair amount of time so next tried:
+
+* https://huggingface.co/syzymon/long_llama_3b_instruct
+
+It also was not happy. 0/2 for using `transformers`
+
+
+
+Next I tried: https://huggingface.co/TheBloke/LlongOrca-7B-16K-GGML
+
+So, this ... ran:
+
 ```
 ❯ ~/llm/llama.cpp/main -ngl 99 --temp 0.1 --rope-freq-base 10000 --rope-freq-scale 0.25 -n 11000 -c 11000 -m /models/llm/llongorca/llongorca-7b-16k.ggmlv3.q8_0.bin -f prompt.txt > edit.txt
 main: warning: scaling RoPE frequency by 0.25 (default 1.0)
@@ -116,47 +138,93 @@ llama_print_timings:        eval time =  4101.42 ms /   157 runs   (   26.12 ms 
 llama_print_timings:       total time = 10251.37 ms
 ```
 
-But doesn't output correctly?
+But gave frankly, terrible output.
 
-# ChatGPT save us
-OK it's getting late, I give up, lets see if ChatGPT4-CI can do better...
-* [https://chat.openai.com/share/41f01738-637a-465c-a874-3c60e17fa2d1](https://chat.openai.com/share/41f01738-637a-465c-a874-3c60e17fa2d1)
+## ChatGPT 4 Code Interpreter
 
-it generated some not quite correct output - I asked it to make some corrections but it went down a path or writing worse and worse regexes.
+It was getting late at the point so I decided to break out the big guns and see if ChatGPT-4 Code Interpreter could do better.
 
-Instead, I took that output and sent it to a new CI w/ a fresh context that could remember it was an LLM...
-* [https://chat.openai.com/share/d8306fbc-9034-4050-b028-e037e5f76b25](https://chat.openai.com/share/d8306fbc-9034-4050-b028-e037e5f76b25)
+Here are the results:
+
+* Transcript: [https://chat.openai.com/share/41f01738-637a-465c-a874-3c60e17fa2d1](https://chat.openai.com/share/41f01738-637a-465c-a874-3c60e17fa2d1)
+* Output: [corrected_final_transcript.md](corrected_final_transcript.md)
+
+The output it generated was not quite correct. It was trying very hard to use Python code to do all the fixups for some reason, and when I asked it to try to make more corrections, It went down the path of writing worse and worse regexes instead of being an LLM.
+
+So, I started a new chat and I took that output and w/ a fresh context asked it to fix the transcript:
+
+* Transcript: [https://chat.openai.com/share/d8306fbc-9034-4050-b028-e037e5f76b25](https://chat.openai.com/share/d8306fbc-9034-4050-b028-e037e5f76b25)
+* Output: [secondtry-corrected_transcript.md](secondtry-corrected_transcript.md)
+
+This output looks prety good, although I didn't validate it. I had to have it review piece by piece however, and it took quite a long time.
 
 
 
 If we wanted to use a local model to do cleanup we would have to write our own code like w/ the CI to split lines, then pass into the local LLM to fix. If we used a llama2-70b it would be smart enough; we should try to figure out what's the smallest model that could help us...
 
+## OpenAI Playground
 
-# Chunking w/ gpt-3.5-turbo-16k
-So, after going to bed, here's the way it probably *should* be done. See the 05-gpt.py script. Relatively easy to chunk and submit.
+Before the end of the night I did decide to see if just plain old `gpt-3.5-turbo-16k` could do the job, and while it ran out of tokens, it wasn't bad:
 
-It took about 5 minutes to run:
+* [gpt-3.5-turbo-16k.md](https://github.com/AUGMXNT/transcribe/blob/main/gpt-3.5-turbo-16k.md)
+
+## Properly Chunking w/ gpt-3.5-turbo-16k
+
+The next day, I decided that the `gpt-3.5` results were good enough that I should try to do it properly. This resulted in the [05-gpt.py](05-gpt.py) script. It was relatively easy to chunk and submit and took about 5 minutes to run:
 '''
 real    4m53.263s
 user    0m0.481s
 sys     0m2.186s
 '''
 
-And the output [gpt-3.5-turbo-16k.md](gpt-3.5-turbo-16k.md) looks pretty good to me.
+And the output [transcript-edited-by-gpt3.5.md](transcript-edited-by-gpt3.5.md) from a spot check looks like the best version far.
 
-# Can we do it locally?
+## Can we do it locally?
+
+Since I had the chunking code, I decided that I would try again with local models, especially with so many claiming to have reached parity with gpt-3.5 ()
+
 If we do chunking, we don't need to futz w/ the local models. Let's try some ones we have on-hand.
 
 Here are the results of some tests: [local-output.md](local-output.md)
 
 It looks like a 70B q4 model is maybe the smallest language mode that can instruction follow to reformat text? This takes about 40GB of memory.
 
-Here's the final results w/ more tokesn at a time... it starts off OK, but actually quickly falls apart and is inaccurate.
-
-It's definitely... a fail.
+Here's the final results w/ more tokesn at a time... it starts off OK, but sometimes goes terribly off the rails.
 
 ```
 real    12m7.522s
 user    12m23.434s
 sys     0m16.600s
 ```
+
+I gave a few other models a try:
+
+* [StableBeluga2 70B](https://stability.ai/blog/stable-beluga-large-instruction-fine-tuned-models) ([GPTQ](https://huggingface.co/TheBloke/StableBeluga2-70B-GPTQ)) - did not do **markdown** styling on speakers, added notes
+
+* [Airoboros 2.0 70B](https://huggingface.co/jondurbin/airoboros-l2-70b-gpt4-2.0) - using the [context obedient question answering](https://huggingface.co/jondurbin/airoboros-l2-70b-gpt4-2.0) leads to some [*wild output*](output.airoboros-l2.txt)
+
+While several open models have benchmarks approaching or even beating `gpt-3.5`, for instruction following it looks like there's a long ways to go to match OpenAI for a pretty "basic" task.
+
+## Anthropic Claude
+
+A friend tried Claude and it failed (potentially due to front-end safety filtering?). Still, now that I'm deep into it, why not write a script and see if the API will work or not. With 100K context, in theory, Claude should be able to give us a usable transcript without any chunking.
+
+Hilariously, if you ask it for an sample script, Claude will hallucinate an API for you. Here's the [actual Python API]([GitHub - anthropics/anthropic-sdk-python](https://github.com/anthropics/anthropic-sdk-python)).
+
+Our [first try](transcript-edited-by-claude2.md) dies at exactly 300s, so that's probably when the system kills a long-running call. Anthropics logs shows:
+
+```json
+{"client_error":true,"code":499,"detail":"Client disconnected"}
+```
+
+I adapted the gpt chunking code [07-claude.py](07-claude.py) and here's the [output from the second try](transcript-edited-by-claude2-try2.md).
+
+* I didn't `time` it but from the logs it looks like took about 12 minutes, with most chunks (8) taking ~100s and a few a bit faster. (100 line chunks, 3000-4000 characters, unknown # of tokens, maybe 1000 tokens per chunk?)
+
+* It looks like does a decent job, probably on par with gpt-3.5?
+
+* It manages to actually italicize all the Dutch, but also italicizes some non-Dutch as well.
+
+* I noticed one or two line break errors.
+
+* It does not remove "um"s.
