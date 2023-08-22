@@ -142,10 +142,21 @@ user    0m0.481s
 sys     0m2.186s
 '''
 
-And the output [gpt-3.5-turbo-16k.md](gpt-3.5-turbo-16k.md)
+And the output [gpt-3.5-turbo-16k.md](gpt-3.5-turbo-16k.md) looks pretty good to me.
 
+# Can we do it locally?
+If we do chunking, we don't need to futz w/ the local models. Let's try some ones we have on-hand.
 
+Here are the results of some tests: [local-output.md](local-output.md)
+
+It looks like a 70B q4 model is maybe the smallest language mode that can instruction follow to reformat text? This takes about 40GB of memory.
+
+Here's the final results w/ more tokesn at a time... it starts off OK, but actually quickly falls apart and is inaccurate.
+
+It's definitely... a fail.
+
+```
 real    12m7.522s
-To github.com:AUGMXNT/transcribe.git                                                                │user    12m23.434s
-   97f028b..38afa72  main -> main                                                                   │sys     0m16.600s
-
+user    12m23.434s
+sys     0m16.600s
+```
