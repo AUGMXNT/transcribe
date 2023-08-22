@@ -1,6 +1,9 @@
 # OpenOrca Platypus2 13B
-Original Model: [https://huggingface.co/Open-Orca/OpenOrca-Platypus2-13B](https://huggingface.co/Open-Orca/OpenOrca-Platypus2-13B])
-Quant: [https://huggingface.co/TheBloke/OpenOrca-Platypus2-13B-GPTQ](https://huggingface.co/TheBloke/OpenOrca-Platypus2-13B-GPTQ)
+Original Model
+* [https://huggingface.co/Open-Orca/OpenOrca-Platypus2-13B](https://huggingface.co/Open-Orca/OpenOrca-Platypus2-13B)
+
+Quant:
+* [https://huggingface.co/TheBloke/OpenOrca-Platypus2-13B-GPTQ](https://huggingface.co/TheBloke/OpenOrca-Platypus2-13B-GPTQ)
 
 GPTQ 4-bit 32g actorder=yes
 
