@@ -66,26 +66,21 @@ The end result is about 10K tokens. For cleanup, my original intention was to us
 The problems I ran into:
 
 * libtiff.so.5 complaints
-  ```cd /usr/lib
-  ln -s libtiff.so.6 libtiff.so.5```
-
+```
+cd /usr/lib
+ln -s libtiff.so.6 libtiff.so.5
+```
 * FlashAttention 2 having lib complaints - couldn't fix so just skipped it
+* Could not run on 24GB GPU? (maybe if we had FlashAttention 2...)
 
-* Could not run on 24GB GPU? (maybe if we had FlashAttention 2)
-
-
-
-I spent a fair amount of time so next tried:
-
+I spent a fair amount of time already trying to get this to work already at this point so just moved on:
 * https://huggingface.co/syzymon/long_llama_3b_instruct
 
 It also was not happy. 0/2 for using `transformers`
 
+Next I tried: [https://huggingface.co/TheBloke/LlongOrca-7B-16K-GGML](https://huggingface.co/TheBloke/LlongOrca-7B-16K-GGML)
 
-
-Next I tried: https://huggingface.co/TheBloke/LlongOrca-7B-16K-GGML
-
-So, this ... ran:
+So, it ran...:
 
 ```
 ❯ ~/llm/llama.cpp/main -ngl 99 --temp 0.1 --rope-freq-base 10000 --rope-freq-scale 0.25 -n 11000 -c 11000 -m /models/llm/llongorca/llongorca-7b-16k.ggmlv3.q8_0.bin -f prompt.txt > edit.txt
@@ -138,7 +133,7 @@ llama_print_timings:        eval time =  4101.42 ms /   157 runs   (   26.12 ms 
 llama_print_timings:       total time = 10251.37 ms
 ```
 
-But gave frankly, terrible output.
+But gave frankly, terrible output. I didn't even bother saving it (bad! and this was w/ proper RoPE scaling)
 
 ## ChatGPT 4 Code Interpreter
 
@@ -158,8 +153,6 @@ So, I started a new chat and I took that output and w/ a fresh context asked it 
 
 This output looks prety good, although I didn't validate it. I had to have it review piece by piece however, and it took quite a long time.
 
-
-
 If we wanted to use a local model to do cleanup we would have to write our own code like w/ the CI to split lines, then pass into the local LLM to fix. If we used a llama2-70b it would be smart enough; we should try to figure out what's the smallest model that could help us...
 
 ## OpenAI Playground
@@ -171,25 +164,25 @@ Before the end of the night I did decide to see if just plain old `gpt-3.5-turbo
 ## Properly Chunking w/ gpt-3.5-turbo-16k
 
 The next day, I decided that the `gpt-3.5` results were good enough that I should try to do it properly. This resulted in the [05-gpt.py](05-gpt.py) script. It was relatively easy to chunk and submit and took about 5 minutes to run:
-'''
+```
 real    4m53.263s
 user    0m0.481s
 sys     0m2.186s
-'''
+```
 
-And the output [transcript-edited-by-gpt3.5.md](transcript-edited-by-gpt3.5.md) from a spot check looks like the best version far.
+And the output [transcript-edited-by-gpt3.5.md](transcript-edited-by-gpt3.5.md) from a spot check looks like the best version so far.
 
 ## Can we do it locally?
 
-Since I had the chunking code, I decided that I would try again with local models, especially with so many claiming to have reached parity with gpt-3.5 ()
+Since I had the chunking code, I decided that I would try again with local models, especially with so many claiming to have reached parity with gpt-3.5...
 
-If we do chunking, we don't need to futz w/ the local models. Let's try some ones we have on-hand.
+If we do chunking, we don't need to futz w/ the long context models, so I tried some I had on hand (mostly Llama 2 models). Here are the results of some tests: 
 
-Here are the results of some tests: [local-output.md](local-output.md)
+* [local-output.md](local-output.md) - if you have a few min to give these a read, some of the output is hilarious, but most is just sad.
 
-It looks like a 70B q4 model is maybe the smallest language mode that can instruction follow to reformat text? This takes about 40GB of memory.
+It looks like a 70B q4 model is maybe the smallest language mode that can actually instruction follow well enough to reformat text (This takes about 40GB of memory).
 
-Here's the final results w/ more tokesn at a time... it starts off OK, but sometimes goes terribly off the rails.
+Here's the final results running [06-local-exllama.py](06-local-exllama.py) with the strongest model, a quant of [Orca Mini v3 70B](https://huggingface.co/psmathur/orca_mini_v3_70b)... it starts off OK, but sometimes goes terribly off the rails.
 
 ```
 real    12m7.522s
@@ -197,7 +190,7 @@ user    12m23.434s
 sys     0m16.600s
 ```
 
-I gave a few other models a try:
+I gave a few other "strong" 70B models a try as well:
 
 * [StableBeluga2 70B](https://stability.ai/blog/stable-beluga-large-instruction-fine-tuned-models) ([GPTQ](https://huggingface.co/TheBloke/StableBeluga2-70B-GPTQ)) - did not do **markdown** styling on speakers, added notes
 
@@ -207,7 +200,7 @@ While several open models have benchmarks approaching or even beating `gpt-3.5`,
 
 ## Anthropic Claude
 
-A friend tried Claude and it failed (potentially due to front-end safety filtering?). Still, now that I'm deep into it, why not write a script and see if the API will work or not. With 100K context, in theory, Claude should be able to give us a usable transcript without any chunking.
+A friend tried Claude and it failed (potentially due to front-end safety filtering?). Still, now that I'm deep into it, why not write a script and see if the API will work or not? With 100K context, in theory, Claude should be able to give us a usable transcript without any chunking.
 
 Hilariously, if you ask it for an sample script, Claude will hallucinate an API for you. Here's the [actual Python API]([GitHub - anthropics/anthropic-sdk-python](https://github.com/anthropics/anthropic-sdk-python)).
 
@@ -217,14 +210,16 @@ Our [first try](transcript-edited-by-claude2.md) dies at exactly 300s, so that's
 {"client_error":true,"code":499,"detail":"Client disconnected"}
 ```
 
+(*I didn't disconnect..*)
+
 I adapted the gpt chunking code [07-claude.py](07-claude.py) and here's the [output from the second try](transcript-edited-by-claude2-try2.md).
 
 * I didn't `time` it but from the logs it looks like took about 12 minutes, with most chunks (8) taking ~100s and a few a bit faster. (100 line chunks, 3000-4000 characters, unknown # of tokens, maybe 1000 tokens per chunk?)
 
-* It looks like does a decent job, probably on par with gpt-3.5?
+* It looks like does a decent job, probably on par with gpt-3.5
 
 * It manages to actually italicize all the Dutch, but also italicizes some non-Dutch as well.
 
 * I noticed one or two line break errors.
 
-* It does not remove "um"s.
+* It does not remove "um"s (neither does gpt-3.5 though)
