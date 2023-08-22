@@ -130,3 +130,22 @@ Instead, I took that output and sent it to a new CI w/ a fresh context that coul
 
 
 If we wanted to use a local model to do cleanup we would have to write our own code like w/ the CI to split lines, then pass into the local LLM to fix. If we used a llama2-70b it would be smart enough; we should try to figure out what's the smallest model that could help us...
+
+
+# Chunking w/ gpt-3.5-turbo-16k
+So, after going to bed, here's the way it probably *should* be done. See the 05-gpt.py script. Relatively easy to chunk and submit.
+
+It took about 5 minutes to run:
+'''
+real    4m53.263s
+user    0m0.481s
+sys     0m2.186s
+'''
+
+And the output [gpt-3.5-turbo-16k.md](gpt-3.5-turbo-16k.md)
+
+
+real    12m7.522s
+To github.com:AUGMXNT/transcribe.git                                                                │user    12m23.434s
+   97f028b..38afa72  main -> main                                                                   │sys     0m16.600s
+
