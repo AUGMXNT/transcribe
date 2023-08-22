@@ -25,6 +25,9 @@ pip install git+https://github.com/HazyResearch/flash-attention.git#subdirectory
 
 pip install accelerate
 pip install bitsandbytes
+
+# OpenAI
+pip install openai
 ```
 # Transcribe
 WhisperX transcription of 33m file took 1m15s of wall time on a 3090 w/ large-v2 model
